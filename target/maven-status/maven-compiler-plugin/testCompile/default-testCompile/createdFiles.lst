@@ -1,0 +1,8 @@
+com\bfsi\service\AuthBOTest.class
+com\bfsi\service\NotificationBOTest.class
+com\bfsi\service\AdminBOTest.class
+com\bfsi\service\ComplaintManagerBOTest.class
+com\bfsi\service\OperationsBOTest.class
+com\bfsi\service\PortfolioManagerBOTest.class
+com\bfsi\service\BusinessAnalystBOTest.class
+com\bfsi\service\InvestorBOTest.class
