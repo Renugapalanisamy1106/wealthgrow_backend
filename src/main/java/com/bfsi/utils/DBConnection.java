@@ -6,9 +6,9 @@ package com.bfsi.utils;
 
 public class DBConnection {
 
-    private static final String URL ="jdbc:mysql://localhost:3306/bfsimf_clean?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true";
+    private static final String URL ="jdbc:mysql://127.0.0.1:3306/bfsimf_clean?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true";
     private static final String USER ="root";
-    private static final String PASSWORD ="password";
+    private static final String PASSWORD ="";
 
     public static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);

@@ -1,6 +1,7 @@
 -- MySQL Database Seed Data for Mutual Funds System
 -- Schema name: bfsimf_clean
 
+USE bfsimf_clean;
 
 -- Disable foreign key checks for clean seeding
 SET FOREIGN_KEY_CHECKS = 0;
