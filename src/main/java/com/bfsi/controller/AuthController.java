@@ -5,6 +5,7 @@ import com.bfsi.dto.LoginRequestDTO;
 import com.bfsi.dto.LoginResponseDTO;
 import com.bfsi.dto.RegisterInvestorDTO;
 import com.bfsi.entity.User;
+import com.bfsi.security.JwtUtil;
 import com.bfsi.service.AuthBO;
 
 /**
@@ -16,10 +17,12 @@ import com.bfsi.service.AuthBO;
 public class AuthController {
 
     private final AuthBO authBO;
+    private final JwtUtil jwtUtil;
 
     // ✅ Constructor Injection
-    public AuthController(AuthBO authBO) {
+    public AuthController(AuthBO authBO, JwtUtil jwtUtil) {
         this.authBO = authBO;
+        this.jwtUtil = jwtUtil;
     }
 
     /* ============================
@@ -41,11 +44,14 @@ public class AuthController {
                 request.getPassword()
         );
 
+        String token = jwtUtil.generateToken(user.getUserId(), user.getRoleId());
+
         return new LoginResponseDTO(
                 user.getUserId(),
                 user.getUserName(),
                 user.getEmail(),
-                user.getRoleId()
+                user.getRoleId(),
+                token
         );
     }
 
@@ -66,11 +72,14 @@ public class AuthController {
 
         User user = authBO.registerInvestor(request);
 
+        String token = jwtUtil.generateToken(user.getUserId(), user.getRoleId());
+
         return new LoginResponseDTO(
                 user.getUserId(),
                 user.getUserName(),
                 user.getEmail(),
-                user.getRoleId()
+                user.getRoleId(),
+                token
         );
     }
 

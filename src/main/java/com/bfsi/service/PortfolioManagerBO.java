@@ -32,6 +32,7 @@ public class PortfolioManagerBO {
     private final UserProfileRepository profileRepo;
     private final UserRepository userRepo;
     private final TransactionRepository transactionRepo;
+    private final NotificationBO notificationBO;
 
     public PortfolioManagerBO(MutualFundRepository fundRepo,
                               ScenarioRepository scenarioRepo,
@@ -40,7 +41,8 @@ public class PortfolioManagerBO {
                               DataEvaluationRepository dataEvaluationRepo,
                               UserProfileRepository profileRepo,
                               UserRepository userRepo,
-                              TransactionRepository transactionRepo) {
+                              TransactionRepository transactionRepo,
+                              NotificationBO notificationBO) {
 
         this.fundRepo = fundRepo;
         this.scenarioRepo = scenarioRepo;
@@ -50,6 +52,7 @@ public class PortfolioManagerBO {
         this.profileRepo = profileRepo;
         this.userRepo = userRepo;
         this.transactionRepo = transactionRepo;
+        this.notificationBO = notificationBO;
     }
 
     /* ============================
@@ -138,10 +141,26 @@ public class PortfolioManagerBO {
 
     public void approveEvaluation(String evaluationId) {
         dataEvaluationRepo.updateEvaluationStatus(evaluationId, "APPROVED");
+
+        // ✅ Notify the BA who submitted this evaluation
+        dataEvaluationRepo.findById(evaluationId).ifPresent(ev ->
+            notificationBO.createNotification(
+                ev.getSubmittedBy(),
+                "EVALUATION_APPROVED",
+                "✅ Your scenario evaluation (" + ev.getScenarioId()
+                        + ") has been APPROVED by the Portfolio Manager."));
     }
 
     public void rejectEvaluation(String evaluationId) {
         dataEvaluationRepo.updateEvaluationStatus(evaluationId, "REJECTED");
+
+        // ✅ Notify the BA who submitted this evaluation
+        dataEvaluationRepo.findById(evaluationId).ifPresent(ev ->
+            notificationBO.createNotification(
+                ev.getSubmittedBy(),
+                "EVALUATION_REJECTED",
+                "❌ Your scenario evaluation (" + ev.getScenarioId()
+                        + ") has been REJECTED by the Portfolio Manager."));
     }
 
     /* ============================
@@ -202,7 +221,9 @@ public class PortfolioManagerBO {
         dto.setMobile(entity.getMobile());
         dto.setDob(entity.getDob());
         dto.setPan(entity.getPan());
-        dto.setAddress(entity.getAddress());
+        dto.setCurrentAddress(entity.getCurrentAddress());
+        dto.setPermanentAddress(entity.getPermanentAddress());
+
         return dto;
     }
 
@@ -215,7 +236,8 @@ public class PortfolioManagerBO {
                 dto.getFirstName(),
                 dto.getLastName(),
                 dto.getMobile(),
-                dto.getAddress(),
+                dto.getPermanentAddress(),
+                dto.getCurrentAddress(),
                 dto.getPan(),
                 dto.getDob()
         );

@@ -21,7 +21,7 @@ public class DBVerify {
 
             // Ensure we are reading from the clean schema only
             try (Statement stmt = conn.createStatement()) {
-                stmt.execute("SET search_path TO bfsimf_clean;");
+                // stmt.execute("SET search_path TO bfsimf_clean;");
             }
 
             DatabaseMetaData metaData = conn.getMetaData();

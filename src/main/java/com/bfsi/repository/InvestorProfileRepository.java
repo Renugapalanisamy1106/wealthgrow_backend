@@ -16,30 +16,30 @@ public interface InvestorProfileRepository
        ============================ */
     InvestorProfile findByInvestorId(String investorId);
 
-
     /* ============================
        UPDATE PROFILE
        ============================ */
     @Modifying
-@Transactional
-@Query("""
-    UPDATE InvestorProfile p
-    SET p.firstName = :firstName,
-        p.lastName = :lastName,
-        p.mobile = :mobile,
-        p.address = :address,
-        p.pan = :pan,
-        p.dob = :dob
-    WHERE p.investorId = :investorId
-""")
-void updateProfile(
-        @Param("investorId") String investorId,
-        @Param("firstName") String firstName,
-        @Param("lastName") String lastName,
-        @Param("mobile") String mobile,
-        @Param("address") String address,
-        @Param("pan") String pan,
-        @Param("dob") java.time.LocalDate dob
-);
-
+    @Transactional
+    @Query("""
+        UPDATE InvestorProfile p
+        SET p.firstName         = :firstName,
+            p.lastName          = :lastName,
+            p.mobile            = :mobile,
+            p.permanentAddress  = :permanentAddress,
+            p.currentAddress    = :currentAddress,
+            p.pan               = :pan,
+            p.dob               = :dob
+        WHERE p.investorId = :investorId
+    """)
+    void updateProfile(
+            @Param("investorId") String investorId,
+            @Param("firstName") String firstName,
+            @Param("lastName") String lastName,
+            @Param("mobile") String mobile,
+            @Param("permanentAddress") String permanentAddress,
+            @Param("currentAddress") String currentAddress,
+            @Param("pan") String pan,
+            @Param("dob") java.time.LocalDate dob
+    );
 }

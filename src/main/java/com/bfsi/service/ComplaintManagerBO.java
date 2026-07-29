@@ -220,7 +220,9 @@ public UserProfileDTO viewProfile(String userId) {
     dto.setMobile(entity.getMobile());
     dto.setDob(entity.getDob());
     dto.setPan(entity.getPan());
-    dto.setAddress(entity.getAddress());
+    dto.setCurrentAddress(entity.getCurrentAddress());
+    dto.setPermanentAddress(entity.getPermanentAddress());
+
 
     return dto;
 }
@@ -236,7 +238,8 @@ public void updateProfile(UserProfileDTO dto) {
             dto.getFirstName(),
             dto.getLastName(),
             dto.getMobile(),
-            dto.getAddress(),
+            dto.getPermanentAddress(),
+            dto.getCurrentAddress(),
             dto.getPan(),
             dto.getDob()
     );

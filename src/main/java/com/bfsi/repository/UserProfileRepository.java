@@ -11,10 +11,6 @@ import com.bfsi.entity.InvestorProfile;
 public interface UserProfileRepository
         extends JpaRepository<InvestorProfile, String> {
 
-    /* ============================
-       FETCH PROFILE (GENERIC)
-       ============================ */
-
     @Query("""
         SELECT p FROM InvestorProfile p
         WHERE p.investorId = :userId
@@ -23,29 +19,27 @@ public interface UserProfileRepository
             @Param("userId") String userId
     );
 
-    /* ============================
-       ✅ UPDATE PROFILE (ALL USERS)
-       ============================ */
-
     @Modifying
     @Transactional
     @Query("""
         UPDATE InvestorProfile p
-        SET p.firstName = :firstName,
-            p.lastName = :lastName,
-            p.mobile = :mobile,
-            p.address = :address,
-            p.pan = :pan,
-            p.dob = :dob
+        SET p.firstName         = :firstName,
+            p.lastName          = :lastName,
+            p.mobile            = :mobile,
+            p.permanentAddress  = :permanentAddress,
+            p.currentAddress    = :currentAddress,
+            p.pan               = :pan,
+            p.dob               = :dob
         WHERE p.investorId = :userId
     """)
     void updateProfile(
-            @Param("userId") String userId,
-            @Param("firstName") String firstName,
-            @Param("lastName") String lastName,
-            @Param("mobile") String mobile,
-            @Param("address") String address,
-            @Param("pan") String pan,
-            @Param("dob") java.time.LocalDate dob
+            @Param("userId")            String userId,
+            @Param("firstName")         String firstName,
+            @Param("lastName")          String lastName,
+            @Param("mobile")            String mobile,
+            @Param("permanentAddress")  String permanentAddress,
+            @Param("currentAddress")    String currentAddress,
+            @Param("pan")               String pan,
+            @Param("dob")               java.time.LocalDate dob
     );
 }

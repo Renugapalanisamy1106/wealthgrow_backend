@@ -30,13 +30,15 @@ public class CleanDuplicateImpactData {
             int navDeleted = stmt.executeUpdate(deleteNavSeries);
             System.out.println("✅ NAV series deleted: " + navDeleted);
 
-            // ✅ STEP 2: DELETE DUPLICATE IMPACT ROWS
+            // ✅ STEP 2: DELETE DUPLICATE IMPACT ROWS (MySQL Error 1093 fixed)
             String deleteImpact = """
                 DELETE FROM bfsimf_clean.scenario_impact_result
                 WHERE impact_id NOT IN (
-                    SELECT MIN(impact_id)
-                    FROM bfsimf_clean.scenario_impact_result
-                    GROUP BY scenario_id, fund_id
+                    SELECT min_id FROM (
+                        SELECT MIN(impact_id) AS min_id
+                        FROM bfsimf_clean.scenario_impact_result
+                        GROUP BY scenario_id, fund_id
+                    ) AS temp
                 );
             """;
 

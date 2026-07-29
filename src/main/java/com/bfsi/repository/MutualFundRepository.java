@@ -26,6 +26,21 @@ public interface MutualFundRepository
 
 
     /* =============================
+       FETCH ACTIVE FUNDS — PROMOTED FIRST
+       Promoted funds appear at the top, then the rest,
+       each group ordered by most recently created.
+       ============================= */
+    @Query("""
+        SELECT m FROM MutualFundProduct m
+        WHERE m.status = :status
+        ORDER BY
+            CASE WHEN m.promotionStatus = 'PROMOTED' THEN 0 ELSE 1 END,
+            m.createdAt DESC
+    """)
+    List<MutualFundProduct> findActiveFundsPromotedFirst(@Param("status") String status);
+
+
+    /* =============================
        FETCH FUND BY ID
        ============================= */
     MutualFundProduct findByFundId(String fundId);

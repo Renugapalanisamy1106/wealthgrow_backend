@@ -28,6 +28,8 @@ public class InvestorBOTest {
     @Mock private InvestorProfileRepository profileRepo;
     @Mock private ComplaintRepository complaintRepo;
 
+    @Mock private NotificationBO notificationBO;
+
     @InjectMocks
     private InvestorBO investorBO;
 
@@ -126,7 +128,9 @@ public void testInvestInFund_Success() {
 
     investorBO.investInFund(dto);
 
-    verify(portfolioRepo).save(any(Portfolio.class));
+    // ✅ Two-step flow: invest creates a PENDING transaction only.
+    //    The portfolio holding is created later at allocation time (Operations).
+    verify(portfolioRepo, never()).save(any(Portfolio.class));
     verify(transactionRepo).save(any(Transaction.class));
 }
 
@@ -193,19 +197,19 @@ public void testInvest_InvalidAmount() {
        ================================ */
 
     @Test
-    public void testAvailableFunds() {
+public void testAvailableFunds() {
 
-        MutualFundProduct fund = new MutualFundProduct();
-        fund.setStatus("ACTIVE");
+    MutualFundProduct fund = new MutualFundProduct();
+    fund.setStatus("ACTIVE");
 
-        when(fundRepo.findByStatus("ACTIVE"))
-                .thenReturn(List.of(fund));
+    when(fundRepo.findActiveFundsPromotedFirst("ACTIVE"))
+            .thenReturn(List.of(fund));
 
-        List<MutualFundProduct> result =
-                investorBO.getAvailableFunds();
+    List<MutualFundProduct> result =
+            investorBO.getAvailableFunds();
 
-        assertFalse(result.isEmpty());
-    }
+    assertFalse(result.isEmpty());
+}
 
     /* ================================
        SCENARIO
@@ -284,5 +288,50 @@ public void testInvest_InvalidAmount() {
 
         assertEquals(2260.50, dto.getTotalValue(), 0.01);
         assertEquals(1, dto.getActiveFunds());
+    }
+
+    /* ✅ NEW: brand-new investor with no data → empty dashboard, no exception */
+    @Test
+    public void testDashboard_EmptyInvestor_NoError() {
+
+        when(portfolioRepo.getTotalPortfolioValue("INV999"))
+                .thenReturn(null);   // triggers DataNotFound inside getTotalInvestmentValue
+        when(portfolioRepo.findByInvestorId("INV999"))
+                .thenReturn(Collections.emptyList());
+        when(transactionRepo.findByInvestorIdOrderByTxnDateDesc("INV999"))
+                .thenReturn(Collections.emptyList());
+
+        InvestorDashboardDTO dto = investorBO.getDashboard("INV999");
+
+        assertEquals(0.0, dto.getTotalValue(), 0.001);
+        assertEquals(0, dto.getActiveFunds());
+        assertNotNull(dto.getRecentTransactions());
+        assertTrue(dto.getRecentTransactions().isEmpty());
+    }
+
+    /* ✅ NEW: invest records a PENDING transaction (two-step flow) */
+    @Test
+    public void testInvest_CreatesPendingTransaction() {
+
+        InvestRequestDTO dto = new InvestRequestDTO();
+        dto.setInvestorId("INV001");
+        dto.setFundId("MF001");
+        dto.setAmount(5000);
+
+        InvestorProfile investor = new InvestorProfile();
+        investor.setInvestorId("INV001");
+        when(profileRepo.findByInvestorId("INV001")).thenReturn(investor);
+
+        MutualFundProduct fund = new MutualFundProduct();
+        fund.setFundId("MF001");
+        fund.setNavLevel(45.21);
+        when(fundRepo.findByFundId("MF001")).thenReturn(fund);
+
+        investorBO.investInFund(dto);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepo).save(captor.capture());
+        assertEquals("PENDING", captor.getValue().getStatus());
+        verify(portfolioRepo, never()).save(any(Portfolio.class));
     }
 }

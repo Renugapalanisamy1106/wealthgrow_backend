@@ -29,6 +29,8 @@ public class PortfolioManagerBOTest {
     @Mock private UserRepository userRepo;
     @Mock private TransactionRepository transactionRepo;
 
+    @Mock private NotificationBO notificationBO;
+
     @InjectMocks
     private PortfolioManagerBO pmBO;
 
@@ -216,27 +218,29 @@ public class PortfolioManagerBOTest {
     }
 
     @Test
-    public void testUpdateProfile() {
+public void testUpdateProfile() {
 
-        UserProfileDTO dto = new UserProfileDTO();
-        dto.setUserId("PM001");
-        dto.setFirstName("Rahul");
-        dto.setLastName("Sharma");
-        dto.setMobile("9000000002");
-        dto.setAddress("Mumbai");
-        dto.setPan("PMPAN001A");
-        dto.setDob(java.time.LocalDate.of(1985, 6, 15));
+    UserProfileDTO dto = new UserProfileDTO();
+    dto.setUserId("PM001");
+    dto.setFirstName("Rahul");
+    dto.setLastName("Sharma");
+    dto.setMobile("9000000002");
+    dto.setCurrentAddress("Mumbai");
+    dto.setPermanentAddress("Mumbai");
+    dto.setPan("PMPAN001A");
+    dto.setDob(java.time.LocalDate.of(1985, 6, 15));
 
-        pmBO.updateProfile(dto);
+    pmBO.updateProfile(dto);
 
-        verify(profileRepo).updateProfile(
-                eq("PM001"),
-                eq("Rahul"),
-                eq("Sharma"),
-                eq("9000000002"),
-                eq("Mumbai"),
-                eq("PMPAN001A"),
-                eq(java.time.LocalDate.of(1985, 6, 15)
-        ));
-    }
+    verify(profileRepo).updateProfile(
+            eq("PM001"),
+            eq("Rahul"),
+            eq("Sharma"),
+            eq("9000000002"),
+            eq("Mumbai"),
+            eq("Mumbai"),
+            eq("PMPAN001A"),
+            eq(java.time.LocalDate.of(1985, 6, 15))
+    );
+}
 }

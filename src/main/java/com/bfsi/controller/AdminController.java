@@ -112,14 +112,18 @@ public class AdminController {
     }
 
     @PutMapping("/evaluations/{evaluationId}/approve")
-    public String approveEvaluation(@PathVariable String evaluationId) {
-        adminBO.approveEvaluation(evaluationId);
+    public String approveEvaluation(
+            @PathVariable String evaluationId,
+            @RequestBody(required = false) String adminRemarks) {
+        adminBO.approveEvaluation(evaluationId, adminRemarks);
         return "Evaluation approved successfully";
     }
 
     @PutMapping("/evaluations/{evaluationId}/reject")
-    public String rejectEvaluation(@PathVariable String evaluationId) {
-        adminBO.rejectEvaluation(evaluationId);
+    public String rejectEvaluation(
+            @PathVariable String evaluationId,
+            @RequestBody(required = false) String adminRemarks) {
+        adminBO.rejectEvaluation(evaluationId, adminRemarks);
         return "Evaluation rejected successfully";
     }
 

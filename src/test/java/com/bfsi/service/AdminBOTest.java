@@ -28,6 +28,8 @@ public class AdminBOTest {
     @Mock private UserProfileRepository profileRepo;
     @Mock private AdminRepository adminRepo;
 
+    @Mock private NotificationBO notificationBO;
+
     @InjectMocks
     private AdminBO adminBO;
 
@@ -242,19 +244,45 @@ public class AdminBOTest {
         assertTrue(adminBO.viewPendingEvaluations().isEmpty());
     }
 
-    @Test
-    public void testApproveEvaluation() {
-        adminBO.approveEvaluation("E1");
+    /* ============================
+   EVALUATION
+   ============================ */
 
-        verify(dataEvaluationRepo).updateEvaluationStatus("E1", "APPROVED");
-    }
+@Test
+public void testApproveEvaluation() {
 
-    @Test
-    public void testRejectEvaluation() {
-        adminBO.rejectEvaluation("E1");
+    adminBO.approveEvaluation("E1", "Approved"); 
 
-        verify(dataEvaluationRepo).updateEvaluationStatus("E1", "REJECTED");
-    }
+    verify(dataEvaluationRepo).updateEvaluationStatus("E1", "APPROVED");
+    verify(dataEvaluationRepo).updateAdminRemarks("E1", "Approved"); 
+}
+
+/* ✅ NEW: approving notifies the BA who submitted */
+@Test
+public void testApproveEvaluation_NotifiesSubmitter() {
+
+    DataEvaluation ev = new DataEvaluation();
+    ev.setEvaluationId("E1");
+    ev.setScenarioId("SC1");
+    ev.setSubmittedBy("BA001");
+
+    when(dataEvaluationRepo.findById("E1"))
+            .thenReturn(java.util.Optional.of(ev));
+
+    adminBO.approveEvaluation("E1", "Approved");
+
+    verify(notificationBO).createNotification(
+            eq("BA001"), eq("EVALUATION_APPROVED"), anyString());
+}
+
+@Test
+public void testRejectEvaluation() {
+
+    adminBO.rejectEvaluation("E1", "Rejected"); 
+
+    verify(dataEvaluationRepo).updateEvaluationStatus("E1", "REJECTED");
+    verify(dataEvaluationRepo).updateAdminRemarks("E1", "Rejected"); 
+}
 
     /* ============================
        PROFILE
@@ -288,14 +316,15 @@ public class AdminBOTest {
         adminBO.updateProfile(dto);
 
         verify(profileRepo).updateProfile(
-                eq("A1"),
-                nullable(String.class),
-                nullable(String.class),
-                nullable(String.class),
-                nullable(String.class),
-                nullable(String.class),
-                nullable(LocalDate.class)
-        );
+        eq("A1"),
+        nullable(String.class),
+        nullable(String.class),
+        nullable(String.class),
+        nullable(String.class),
+        nullable(String.class),
+        nullable(String.class),
+        nullable(LocalDate.class)
+);
     }
 
     @Test(expected = DataNotFoundException.class)

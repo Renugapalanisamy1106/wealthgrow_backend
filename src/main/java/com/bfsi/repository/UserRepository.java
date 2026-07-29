@@ -37,6 +37,14 @@ public interface UserRepository
     );
 
     /* =====================
+       FIND USER IDS BY ROLE  (for role-targeted notifications)
+       ===================== */
+    @Query("""
+        SELECT u.userId FROM User u WHERE u.roleId = :roleId
+    """)
+    java.util.List<String> findUserIdsByRole(@Param("roleId") String roleId);
+
+    /* =====================
        COUNT USERS
        ===================== */
     @Query("""

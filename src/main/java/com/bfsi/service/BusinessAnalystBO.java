@@ -40,6 +40,7 @@ public class BusinessAnalystBO {
     private final DataEvaluationRepository       dataEvaluationRepo;
     private final UserProfileRepository          profileRepo;
     private final ScenarioNavSeriesRepository    navSeriesRepo;
+    private final NotificationBO                 notificationBO;
 
     public BusinessAnalystBO(
         ScenarioRepository             scenarioRepo,
@@ -47,7 +48,8 @@ public class BusinessAnalystBO {
         ScenarioImpactResultRepository impactRepo,
         DataEvaluationRepository       dataEvaluationRepo,
         UserProfileRepository          profileRepo,
-        ScenarioNavSeriesRepository    navSeriesRepo) {
+        ScenarioNavSeriesRepository    navSeriesRepo,
+        NotificationBO                 notificationBO) {
 
         this.scenarioRepo       = scenarioRepo;
         this.fundRepo           = fundRepo;
@@ -55,6 +57,7 @@ public class BusinessAnalystBO {
         this.dataEvaluationRepo = dataEvaluationRepo;
         this.profileRepo        = profileRepo;
         this.navSeriesRepo      = navSeriesRepo;
+        this.notificationBO     = notificationBO;
     }
 
     /* ============================ */
@@ -309,6 +312,19 @@ public class BusinessAnalystBO {
         evaluation.setSubmittedBy(submittedBy);   // ✅ GAP 3: record who submitted
 
         dataEvaluationRepo.save(evaluation);
+
+        // ✅ Notify the approving role (PM / Admin) and confirm to the submitting BA
+        notificationBO.createNotificationForRole(
+                roleToApprove,
+                "EVALUATION_PENDING",
+                "A new scenario evaluation (" + scenarioId + ") has been submitted by "
+                        + submittedBy + " and is pending your approval.");
+        notificationBO.createNotification(
+                submittedBy,
+                "EVALUATION_SUBMITTED",
+                "Your scenario evaluation (" + scenarioId + ") has been submitted to "
+                        + roleToApprove + " for approval.");
+
         return evaluation;
     }
 
@@ -322,30 +338,45 @@ public class BusinessAnalystBO {
     /* PROFILE                      */
     /* ============================ */
     public UserProfileDTO viewProfile(String userId) {
-        var entity = profileRepo.getProfileByUserId(userId);
-        if (entity == null) throw new DataNotFoundException("Profile not found");
 
-        UserProfileDTO dto = new UserProfileDTO();
-        dto.setUserId(entity.getInvestorId());
-        dto.setFirstName(entity.getFirstName());
-        dto.setLastName(entity.getLastName());
-        dto.setEmail(entity.getEmail());
-        dto.setMobile(entity.getMobile());
-        dto.setDob(entity.getDob());
-        dto.setPan(entity.getPan());
-        dto.setAddress(entity.getAddress());
-        return dto;
+    var entity = profileRepo.getProfileByUserId(userId);
+
+    if (entity == null) {
+        throw new DataNotFoundException("Profile not found");
     }
+
+    UserProfileDTO dto = new UserProfileDTO();
+
+    dto.setUserId(entity.getInvestorId());
+    dto.setFirstName(entity.getFirstName());
+    dto.setLastName(entity.getLastName());
+    dto.setEmail(entity.getEmail());
+    dto.setMobile(entity.getMobile());
+    dto.setDob(entity.getDob());
+    dto.setPan(entity.getPan());
+    dto.setCurrentAddress(entity.getCurrentAddress());
+    dto.setPermanentAddress(entity.getPermanentAddress());
+
+    return dto;
+}
 
     public void updateProfile(UserProfileDTO dto) {
-        if (dto.getUserId() == null || dto.getUserId().isEmpty()) {
-            throw new DataNotFoundException("Invalid User ID");
-        }
-        profileRepo.updateProfile(
-            dto.getUserId(), dto.getFirstName(), dto.getLastName(),
-            dto.getMobile(), dto.getAddress(), dto.getPan(), dto.getDob()
-        );
+
+    if (dto.getUserId() == null || dto.getUserId().isEmpty()) {
+        throw new DataNotFoundException("Invalid User ID");
     }
+
+    profileRepo.updateProfile(
+            dto.getUserId(),
+            dto.getFirstName(),
+            dto.getLastName(),
+            dto.getMobile(),
+            dto.getPermanentAddress(),
+            dto.getCurrentAddress(), 
+            dto.getPan(),
+            dto.getDob()
+    );
+}
 
     /* ============================ */
     /* NAV SERIES                   */

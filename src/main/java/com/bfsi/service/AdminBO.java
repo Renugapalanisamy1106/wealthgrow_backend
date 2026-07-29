@@ -38,6 +38,7 @@ public class AdminBO {
     private final UserProfileRepository profileRepo;
     private final ScenarioImpactResultRepository impactRepo;
     private final ScenarioNavSeriesRepository navSeriesRepo;
+    private final NotificationBO notificationBO;
 
     @Autowired
     private AdminRepository adminRepo;
@@ -49,7 +50,8 @@ public class AdminBO {
             UserRepository userRepo,
             UserProfileRepository profileRepo,
             ScenarioImpactResultRepository impactRepo,
-            ScenarioNavSeriesRepository navSeriesRepo) {
+            ScenarioNavSeriesRepository navSeriesRepo,
+            NotificationBO notificationBO) {
 
         this.fundRepo          = fundRepo;
         this.scenarioRepo      = scenarioRepo;
@@ -58,6 +60,7 @@ public class AdminBO {
         this.profileRepo       = profileRepo;
         this.impactRepo        = impactRepo;
         this.navSeriesRepo     = navSeriesRepo;
+        this.notificationBO    = notificationBO;
     }
 
     /* ============================
@@ -115,6 +118,13 @@ public class AdminBO {
                 .orElseThrow(() -> new DataNotFoundException("Fund not found"));
         fund.setPromotionStatus("PROMOTED");
         fundRepo.save(fund);
+
+        // ✅ Let investors know about the newly promoted fund
+        notificationBO.createNotificationForRole(
+                "INVESTOR",
+                "FUND_PROMOTED",
+                "⭐ " + fund.getFundName() + " is now a promoted fund. "
+                        + "Check it out on the Mutual Funds page.");
     }
 
     public void demoteFund(String fundId) {
@@ -172,13 +182,35 @@ public class AdminBO {
         }
     }
 
-    public void approveEvaluation(String evaluationId) {
-        dataEvaluationRepo.updateEvaluationStatus(evaluationId, "APPROVED");
-    }
+public void approveEvaluation(String evaluationId, String adminRemarks) {
+    dataEvaluationRepo.updateEvaluationStatus(evaluationId, "APPROVED");
+    dataEvaluationRepo.updateAdminRemarks(evaluationId, adminRemarks);
 
-    public void rejectEvaluation(String evaluationId) {
-        dataEvaluationRepo.updateEvaluationStatus(evaluationId, "REJECTED");
-    }
+    // ✅ Notify the BA who submitted this evaluation
+    dataEvaluationRepo.findById(evaluationId).ifPresent(ev ->
+        notificationBO.createNotification(
+            ev.getSubmittedBy(),
+            "EVALUATION_APPROVED",
+            "✅ Your scenario evaluation (" + ev.getScenarioId()
+                    + ") has been APPROVED by Admin."
+                    + (adminRemarks != null && !adminRemarks.isBlank()
+                        ? " Remarks: " + adminRemarks : "")));
+}
+
+public void rejectEvaluation(String evaluationId, String adminRemarks) {
+    dataEvaluationRepo.updateEvaluationStatus(evaluationId, "REJECTED");
+    dataEvaluationRepo.updateAdminRemarks(evaluationId, adminRemarks);
+
+    // ✅ Notify the BA who submitted this evaluation
+    dataEvaluationRepo.findById(evaluationId).ifPresent(ev ->
+        notificationBO.createNotification(
+            ev.getSubmittedBy(),
+            "EVALUATION_REJECTED",
+            "❌ Your scenario evaluation (" + ev.getScenarioId()
+                    + ") has been REJECTED by Admin."
+                    + (adminRemarks != null && !adminRemarks.isBlank()
+                        ? " Remarks: " + adminRemarks : "")));
+}
 
     /**
      * ✅ NEW: Returns full review bundle for sreview page.
@@ -220,33 +252,38 @@ public class AdminBO {
        ============================ */
 
     public UserProfileDTO viewProfile(String adminId) {
-        var entity = profileRepo.getProfileByUserId(adminId);
-        if (entity == null) throw new DataNotFoundException("Admin profile not found");
+    var entity = profileRepo.getProfileByUserId(adminId);
+    if (entity == null) throw new DataNotFoundException("Admin profile not found");
 
-        UserProfileDTO dto = new UserProfileDTO();
-        dto.setUserId(entity.getInvestorId());
-        dto.setFirstName(entity.getFirstName());
-        dto.setLastName(entity.getLastName());
-        dto.setEmail(entity.getEmail());
-        dto.setMobile(entity.getMobile());
-        dto.setDob(entity.getDob());
-        dto.setPan(entity.getPan());
-        dto.setAddress(entity.getAddress());
-        return dto;
-    }
+    UserProfileDTO dto = new UserProfileDTO();
+    dto.setUserId(entity.getInvestorId());
+    dto.setFirstName(entity.getFirstName());
+    dto.setLastName(entity.getLastName());
+    dto.setEmail(entity.getEmail());
+    dto.setMobile(entity.getMobile());
+    dto.setDob(entity.getDob());
+    dto.setPan(entity.getPan());
+    dto.setCurrentAddress(entity.getCurrentAddress());
+    dto.setPermanentAddress(entity.getPermanentAddress());
+
+    return dto;
+}
 
     public void updateProfile(UserProfileDTO dto) {
-        if (dto.getUserId() == null || dto.getUserId().isEmpty()) {
-            throw new DataNotFoundException("Invalid Admin ID");
-        }
-        profileRepo.updateProfile(
-                dto.getUserId(),
-                dto.getFirstName(),
-                dto.getLastName(),
-                dto.getMobile(),
-                dto.getAddress(),
-                dto.getPan(),
-                dto.getDob()
-        );
+
+    if (dto.getUserId() == null || dto.getUserId().isEmpty()) {
+        throw new DataNotFoundException("Invalid Admin ID");
     }
+
+    profileRepo.updateProfile(
+            dto.getUserId(),
+            dto.getFirstName(),
+            dto.getLastName(),
+            dto.getMobile(),
+            dto.getPermanentAddress(),
+            dto.getCurrentAddress(),
+            dto.getPan(),
+            dto.getDob()
+    );
+}
 }

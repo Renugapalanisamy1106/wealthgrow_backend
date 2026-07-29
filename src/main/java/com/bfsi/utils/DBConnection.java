@@ -6,16 +6,12 @@ package com.bfsi.utils;
 
 public class DBConnection {
 
-    private static final String URL =System.getenv("DB_URL") != null ? System.getenv("DB_URL")
-            : "jdbc:postgresql://172.26.48.73:5432/pnemar26mutualfundsdb";
-    private static final String USER =System.getenv("DB_USERNAME") != null ? System.getenv("DB_USERNAME") : "pnemar26mutualfunds";
-    private static final String PASSWORD =System.getenv("DB_PASSWORD") != null ? System.getenv("DB_PASSWORD") : "mutual";
+    private static final String URL ="jdbc:mysql://localhost:3306/bfsimf_clean?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true";
+    private static final String USER ="root";
+    private static final String PASSWORD ="password";
 
     public static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-
-        conn.prepareStatement("SET search_path TO bfsimf_clean").execute();
-
         return conn;
     }
 }

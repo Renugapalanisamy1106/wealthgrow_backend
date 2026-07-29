@@ -25,6 +25,9 @@ public class AuthBOTest {
     @Mock
     private InvestorProfileRepository profileRepo;
 
+    @Mock
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private AuthBO authBO;
 
@@ -45,6 +48,8 @@ public class AuthBOTest {
 
         when(userRepo.findRoleByUserId("INV001"))
                 .thenReturn(role);
+
+        when(passwordEncoder.encode("pass")).thenReturn("$2a$hashed");
 
         User result = authBO.login("test@mail.com", "pass");
 
@@ -185,5 +190,61 @@ public class AuthBOTest {
                 .thenReturn(null);
 
         authBO.getUserByEmail("missing@mail.com");
+    }
+
+    /* =====================
+       ✅ NEW: HASHED PASSWORD PATH
+       ===================== */
+    @Test
+    public void testLogin_HashedPassword_Success() {
+
+        User user = new User("INV001", "Test User",
+                "test@mail.com", "$2a$10$storedhashvalue", "INVESTOR");
+
+        when(userRepo.findByEmail("test@mail.com")).thenReturn(user);
+        when(passwordEncoder.matches("plain", "$2a$10$storedhashvalue")).thenReturn(true);
+        when(userRepo.findRoleByUserId("INV001"))
+                .thenReturn(new Role("INVESTOR", "Investor"));
+
+        User result = authBO.login("test@mail.com", "plain");
+
+        assertEquals("INVESTOR", result.getRoleId());
+        // hashed path must NOT re-save / upgrade
+        verify(userRepo, never()).save(any());
+    }
+
+    @Test(expected = UnauthorizedAccessException.class)
+    public void testLogin_HashedPassword_Wrong() {
+
+        User user = new User("INV001", "Test User",
+                "test@mail.com", "$2a$10$storedhashvalue", "INVESTOR");
+
+        when(userRepo.findByEmail("test@mail.com")).thenReturn(user);
+        when(passwordEncoder.matches("wrong", "$2a$10$storedhashvalue")).thenReturn(false);
+
+        authBO.login("test@mail.com", "wrong");
+    }
+
+    /* =====================
+       ✅ NEW: LEGACY PLAINTEXT UPGRADES TO HASH ON LOGIN
+       ===================== */
+    @Test
+    public void testLogin_LegacyPlaintext_UpgradesToHash() {
+
+        User user = new User("INV001", "Test User",
+                "test@mail.com", "admin123", "INVESTOR");   // legacy plaintext
+
+        when(userRepo.findByEmail("test@mail.com")).thenReturn(user);
+        when(passwordEncoder.encode("admin123")).thenReturn("$2a$10$upgraded");
+        when(userRepo.findRoleByUserId("INV001"))
+                .thenReturn(new Role("INVESTOR", "Investor"));
+
+        User result = authBO.login("test@mail.com", "admin123");
+
+        assertEquals("INVESTOR", result.getRoleId());
+        // ✅ legacy path must upgrade + persist the hash
+        verify(passwordEncoder).encode("admin123");
+        verify(userRepo).save(user);
+        assertEquals("$2a$10$upgraded", user.getPasswordHash());
     }
 }

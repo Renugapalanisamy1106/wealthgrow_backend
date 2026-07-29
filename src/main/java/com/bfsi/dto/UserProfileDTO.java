@@ -11,7 +11,8 @@ public class UserProfileDTO {
     private String mobile;
     private LocalDate dob;
     private String pan;
-    private String address;
+    private String permanentAddress;
+    private String currentAddress;
 
     /* =====================
        Constructors
@@ -27,7 +28,9 @@ public class UserProfileDTO {
                           String mobile,
                           LocalDate dob,
                           String pan,
-                          String address) {
+                          String permanentAddress,
+                          String currentAddress) {
+
         this.userId = userId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -35,77 +38,43 @@ public class UserProfileDTO {
         this.mobile = mobile;
         this.dob = dob;
         this.pan = pan;
-        this.address = address;
+        this.permanentAddress = permanentAddress;
+        this.currentAddress = currentAddress;
     }
 
     /* =====================
        Getters & Setters
        ===================== */
 
-    public String getUserId() {
-        return userId;
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getMobile() { return mobile; }
+    public void setMobile(String mobile) { this.mobile = mobile; }
+
+    public LocalDate getDob() { return dob; }
+    public void setDob(LocalDate dob) { this.dob = dob; }
+
+    public String getPan() { return pan; }
+    public void setPan(String pan) { this.pan = pan; }
+
+    public String getPermanentAddress() { return permanentAddress; }
+    public void setPermanentAddress(String permanentAddress) {
+        this.permanentAddress = permanentAddress;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    // email usually not editable, but setter kept for completeness
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getMobile() {
-        return mobile;
-    }
-
-    public void setMobile(String mobile) {
-        this.mobile = mobile;
-    }
-
-    public LocalDate getDob() {
-        return dob;
-    }
-
-    public void setDob(LocalDate dob) {
-        this.dob = dob;
-    }
-
-    public String getPan() {
-        return pan;
-    }
-
-    // PAN generally immutable after KYC
-    public void setPan(String pan) {
-        this.pan = pan;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
+    public String getCurrentAddress() { return currentAddress; }
+    public void setCurrentAddress(String currentAddress) {
+        this.currentAddress = currentAddress;
     }
 
     /* =====================
@@ -122,7 +91,8 @@ public class UserProfileDTO {
                 ", mobile='" + mobile + '\'' +
                 ", dob=" + dob +
                 ", pan='" + pan + '\'' +
-                ", address='" + address + '\'' +
+                ", permanentAddress='" + permanentAddress + '\'' +
+                ", currentAddress='" + currentAddress + '\'' +
                 '}';
     }
 }

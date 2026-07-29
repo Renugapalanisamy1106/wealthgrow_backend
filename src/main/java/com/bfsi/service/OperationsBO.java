@@ -11,11 +11,14 @@ import com.bfsi.entity.Alert;
 import com.bfsi.entity.Notification;
 import com.bfsi.entity.Transaction;
 import com.bfsi.entity.UnitAllocation;
+import com.bfsi.entity.MutualFundProduct;
 import com.bfsi.exception.DataNotFoundException;
+import com.bfsi.exception.InvalidOperationException;
 import com.bfsi.repository.AlertRepository;
 import com.bfsi.repository.NotificationRepository;
 import com.bfsi.repository.TransactionRepository;
 import com.bfsi.repository.PortfolioRepository;
+import com.bfsi.repository.MutualFundRepository;
 import com.bfsi.repository.UnitAllocationRepository;
 
 @Service
@@ -26,18 +29,21 @@ public class OperationsBO {
     private final NotificationRepository notificationRepo;
     private final PortfolioRepository portfolioRepo;
     private final UnitAllocationRepository unitAllocationRepo;
+    private final MutualFundRepository fundRepo;
 
     public OperationsBO(TransactionRepository transactionRepo,
                         AlertRepository alertRepo,
                         NotificationRepository notificationRepo,
                         PortfolioRepository portfolioRepo,
-                        UnitAllocationRepository unitAllocationRepo) {
+                        UnitAllocationRepository unitAllocationRepo,
+                        MutualFundRepository fundRepo) {
 
         this.transactionRepo = transactionRepo;
         this.alertRepo = alertRepo;
         this.notificationRepo = notificationRepo;
         this.portfolioRepo = portfolioRepo;
         this.unitAllocationRepo = unitAllocationRepo;
+        this.fundRepo = fundRepo;
     }
 
     /* ============================
@@ -204,12 +210,50 @@ public class OperationsBO {
         Transaction txn = transactionRepo.findByTxnId(transactionId);
 
         if (txn == null) {
-            System.out.println("Transaction not found");
-            return;
+            throw new DataNotFoundException("Transaction not found: " + transactionId);
         }
 
-        double units = txn.getAmount() / nav;
+        // ✅ Guard: only PENDING invest transactions can be allocated (no double-allocation)
+        if (!"PENDING".equalsIgnoreCase(txn.getStatus())) {
+            throw new InvalidOperationException(
+                "Transaction " + transactionId + " is not pending allocation (status: "
+                + txn.getStatus() + ").");
+        }
 
+        if (nav <= 0) {
+            throw new InvalidOperationException("NAV must be greater than zero.");
+        }
+
+        int units = (int) (txn.getAmount() / nav);
+        if (units <= 0) {
+            throw new InvalidOperationException("Amount too small to allocate any units at this NAV.");
+        }
+        double value = units * nav;
+
+        // ✅ Create or merge the investor's portfolio holding at allocation time.
+        //    Use a list lookup so pre-existing duplicate rows don't break allocation.
+        java.util.List<com.bfsi.entity.Portfolio> existing =
+                portfolioRepo.findAllByInvestorIdAndFundId(txn.getInvestorId(), txn.getFundId());
+
+        com.bfsi.entity.Portfolio holding =
+                (existing != null && !existing.isEmpty()) ? existing.get(0) : null;
+
+        if (holding == null) {
+            holding = new com.bfsi.entity.Portfolio(
+                    UUID.randomUUID().toString(),
+                    txn.getInvestorId(),
+                    txn.getFundId(),
+                    units,
+                    value,
+                    LocalDate.now()
+            );
+        } else {
+            holding.setUnitBalance(holding.getUnitBalance() + units);
+            holding.setCurrentValue(holding.getCurrentValue() + value);
+        }
+        portfolioRepo.save(holding);
+
+        // ✅ Mark transaction allocated and record the unit allocation
         txn.setStatus("ALLOCATED");
         transactionRepo.save(txn);
 
@@ -219,18 +263,67 @@ public class OperationsBO {
         ua.setUnits(units);
         ua.setNav(nav);
         ua.setAllocationDate(LocalDate.now());
-
         unitAllocationRepo.save(ua);
 
+        // ✅ Notify investor that units are now allocated
         Notification notification = new Notification();
         notification.setNotificationId(UUID.randomUUID().toString());
         notification.setUserId(txn.getInvestorId());
         notification.setType("NAV_ASSIGN");
-        notification.setMessage("Units allocated: " + units);
+        notification.setMessage("✅ " + units + " units allocated at NAV ₹"
+                + String.format("%.2f", nav) + " for your investment of ₹" + txn.getAmount() + ".");
         notification.setStatus("UNREAD");
         notification.setCreatedAt(LocalDateTime.now());
-
         notificationRepo.save(notification);
+    }
+
+    /* ============================
+       PENDING INVEST TRANSACTIONS (awaiting allocation)
+       ============================ */
+    public List<Transaction> getPendingInvestTransactions() {
+        List<Transaction> list = transactionRepo.findPendingInvestTransactions();
+        return (list != null) ? list : java.util.Collections.emptyList();
+    }
+
+    /* ============================
+       AUTO-ALLOCATE FALLBACK
+       Allocates any PENDING invest transaction older than `thresholdDays`
+       using the fund's current NAV, so investors are never stuck pending.
+       Invoked by the scheduler (see AllocationScheduler) and can also be
+       triggered manually. Returns the number of transactions allocated.
+       ============================ */
+    public int autoAllocateStalePending(int thresholdDays) {
+        List<Transaction> pending = transactionRepo.findPendingInvestTransactions();
+        if (pending == null || pending.isEmpty()) {
+            return 0;
+        }
+
+        LocalDate cutoff = LocalDate.now().minusDays(thresholdDays);
+        int allocatedCount = 0;
+
+        for (Transaction txn : pending) {
+            // Only allocate ones that have waited past the threshold
+            if (txn.getTxnDate() != null && txn.getTxnDate().isAfter(cutoff)) {
+                continue;
+            }
+
+            MutualFundProduct fund = fundRepo.findByFundId(txn.getFundId());
+            double nav = (fund != null) ? fund.getNavLevel() : 0;
+            if (nav <= 0) {
+                // Skip if we can't determine a valid NAV; leave it for Operations
+                continue;
+            }
+
+            try {
+                allocateUnits(txn.getTxnId(), nav);
+                allocatedCount++;
+            } catch (Exception e) {
+                // Don't let one bad txn stop the batch
+                System.out.println("Auto-allocate skipped txn " + txn.getTxnId()
+                        + ": " + e.getMessage());
+            }
+        }
+        return allocatedCount;
     }
 
     /* ============================

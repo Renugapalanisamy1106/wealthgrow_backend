@@ -45,6 +45,16 @@ public interface TransactionRepository
        ============================ */
     Transaction findByTxnId(String txnId);
 
+    /* ============================
+       PENDING INVEST TRANSACTIONS  (auto-allocate fallback)
+       ============================ */
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE t.status = 'PENDING' AND t.txnType = 'INVEST'
+        ORDER BY t.txnDate ASC
+    """)
+    List<Transaction> findPendingInvestTransactions();
+
 
     /* ============================
        COUNT METHODS

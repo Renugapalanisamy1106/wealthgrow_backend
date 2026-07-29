@@ -14,22 +14,24 @@ import com.bfsi.entity.DataEvaluation;
 public interface DataEvaluationRepository
         extends JpaRepository<DataEvaluation, String> {
 
+    // ✅ unnecessary but harmless
     List<DataEvaluation> findAll();
 
     List<DataEvaluation> findByStatus(String status);
 
     long countByStatus(String status);
 
-    // ✅ EXISTING — duplicate check before submit
+    // ✅ duplicate submission check
     Optional<DataEvaluation> findByScenarioIdAndEvaluatorRoleAndStatus(
             String scenarioId, String evaluatorRole, String status);
 
-    // ✅ EXISTING — BA's own submissions
+    // ✅ BA submissions
     List<DataEvaluation> findBySubmittedByOrderByCreatedAtDesc(String submittedBy);
 
-    // ✅ NEW — Admin sees only ADMIN requests, PM sees only PORTFOLIO_MANAGER requests
+    // ✅ Admin / PM filtering
     List<DataEvaluation> findByStatusAndEvaluatorRole(String status, String evaluatorRole);
 
+    // ✅ Update status
     @Modifying
     @Transactional
     @Query("""
@@ -39,5 +41,19 @@ public interface DataEvaluationRepository
     """)
     void updateEvaluationStatus(
             @Param("evaluationId") String evaluationId,
-            @Param("status") String status);
+            @Param("status") String status
+    );
+
+    // ✅ ✅ ✅ NEW — UPDATE ADMIN REMARKS (IMPORTANT)
+    @Modifying
+    @Transactional
+    @Query("""
+        UPDATE DataEvaluation d
+        SET d.adminRemarks = :remarks
+        WHERE d.evaluationId = :evaluationId
+    """)
+    void updateAdminRemarks(
+            @Param("evaluationId") String evaluationId,
+            @Param("remarks") String remarks
+    );
 }

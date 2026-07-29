@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.bfsi.service.AdminBOTest
--------------------------------------------------------------------------------
-Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.21 s -- in com.bfsi.service.AdminBOTest

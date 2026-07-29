@@ -37,6 +37,7 @@ public class InvestorBO {
     private final InvestorProfileRepository profileRepo;
     private final ComplaintRepository complaintRepo;
     private final ScenarioNavSeriesRepository navSeriesRepo;
+    private final NotificationBO notificationBO;
 
     public InvestorBO(PortfolioRepository portfolioRepo,
                       TransactionRepository transactionRepo,
@@ -44,7 +45,8 @@ public class InvestorBO {
                       ScenarioImpactResultRepository impactRepo,
                       InvestorProfileRepository profileRepo,
                       ComplaintRepository complaintRepo,
-                      ScenarioNavSeriesRepository navSeriesRepo) {
+                      ScenarioNavSeriesRepository navSeriesRepo,
+                      NotificationBO notificationBO) {
 
         this.portfolioRepo = portfolioRepo;
         this.transactionRepo = transactionRepo;
@@ -53,6 +55,7 @@ public class InvestorBO {
         this.profileRepo = profileRepo;
         this.complaintRepo = complaintRepo;
         this.navSeriesRepo = navSeriesRepo;
+        this.notificationBO = notificationBO;
     }
 
     /* ================================
@@ -97,6 +100,21 @@ public class InvestorBO {
     }
 
     /* ================================
+       TRANSACTION ID GENERATOR
+       Format: "TXN" + 6 random digits (e.g. TXN000123), unique-checked.
+       ================================ */
+    private String generateTxnId() {
+        String id;
+        int guard = 0;
+        do {
+            int n = (int) (Math.random() * 1_000_000); // 0..999999
+            id = String.format("TXN%06d", n);
+            guard++;
+        } while (transactionRepo.findByTxnId(id) != null && guard < 50);
+        return id;
+    }
+
+    /* ================================
        INVEST
        ================================ */
     public void investInFund(InvestRequestDTO dto) {
@@ -134,7 +152,7 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
 
         // Save as FAILED transaction so investor can see it in history
         Transaction failedTxn = new Transaction(
-            UUID.randomUUID().toString(),
+            generateTxnId(),
             dto.getInvestorId(),
             dto.getFundId().trim().toUpperCase(),
             "INVEST",
@@ -164,42 +182,44 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
 }
 
 
-    int units = (int) (dto.getAmount() / nav);
+    // Pre-validation only: reject amounts too small to buy a unit at current NAV.
+    // (Actual units are computed at allocation time using the allocation NAV.)
+    int previewUnits = (int) (dto.getAmount() / nav);
 
-    if (units <= 0) {
+    if (previewUnits <= 0) {
         throw new InvalidOperationException("Insufficient amount to buy units");
     }
 
-    double value = units * nav;
-
-    Portfolio portfolio = new Portfolio(
-    UUID.randomUUID().toString(),
-    dto.getInvestorId(),
-    cleanFundId,  
-    units,
-    value,
-    java.time.LocalDate.now()
-);
-
-    portfolioRepo.save(portfolio);
-
+    // ✅ TWO-STEP FLOW (Option A):
+    //    Do NOT create the portfolio holding here. The investment is recorded as a
+    //    PENDING transaction; the Operations team (or the auto-allocate fallback)
+    //    assigns units and creates the portfolio holding at allocation time.
+    String txnId = generateTxnId();
     Transaction txn = new Transaction(
-    UUID.randomUUID().toString(),
-    dto.getInvestorId(),
-    cleanFundId,   // ✅ FIXED
-    "INVEST",
-    dto.getAmount(),
-    "CARD",
-    "SUCCESS",
-    java.time.LocalDate.now()
-);
+        txnId,
+        dto.getInvestorId(),
+        cleanFundId,
+        "INVEST",
+        dto.getAmount(),
+        "CARD",
+        "PENDING",                 // ✅ awaiting allocation, not SUCCESS
+        java.time.LocalDate.now()
+    );
 
     transactionRepo.save(txn);
+
+    // ✅ Notify investor (under processing) and Operations team (to allocate units)
+    notificationBO.createNotification(
+            dto.getInvestorId(),
+            "TRANSACTION_PENDING",
+            "Your investment of ₹" + dto.getAmount() + " in " + fund.getFundName()
+                    + " has been received and is awaiting unit allocation.");
+    notificationBO.createNotificationForRole(
+            "OPERATIONS",
+            "INVEST_RECEIVED",
+            "New investment of ₹" + dto.getAmount() + " in " + fund.getFundName()
+                    + " by " + dto.getInvestorId() + " (txn " + txnId + ") awaiting unit allocation.");
 }
-    
-    /* ================================
-       WITHDRAW
-       ================================ */
 
    public void withdrawFromFund(WithdrawRequestDTO dto) {
 
@@ -274,7 +294,7 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
 
         // ✅ SAVE TRANSACTION
         Transaction txn = new Transaction(
-                UUID.randomUUID().toString(),
+                generateTxnId(),
                 dto.getInvestorId(),
                 cleanFundId,
                 "WITHDRAW",
@@ -285,6 +305,18 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
         );
 
         transactionRepo.save(txn);
+
+        // ✅ Notify investor (confirmation) and Operations team
+        notificationBO.createNotification(
+                dto.getInvestorId(),
+                "TRANSACTION_SUCCESS",
+                "Your withdrawal of ₹" + dto.getAmount() + " from " + fund.getFundName()
+                        + " was successful.");
+        notificationBO.createNotificationForRole(
+                "OPERATIONS",
+                "WITHDRAW_RECEIVED",
+                "Withdrawal of ₹" + dto.getAmount() + " from " + fund.getFundName()
+                        + " by " + dto.getInvestorId() + " has been processed.");
 
         System.out.println("✅ WITHDRAW SUCCESS ✅");
 
@@ -307,7 +339,8 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
 
     public List<MutualFundProduct> getAvailableFunds() {
 
-        List<MutualFundProduct> funds = fundRepo.findByStatus("ACTIVE");
+        // ✅ Promoted funds first, then the rest of the active funds
+        List<MutualFundProduct> funds = fundRepo.findActiveFundsPromotedFirst("ACTIVE");
 
         if (funds == null || funds.isEmpty()) {
             throw new DataNotFoundException("No active funds available");
@@ -354,14 +387,15 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
     }
 
     profileRepo.updateProfile(
-            dto.getUserId(),
-            dto.getFirstName(),
-            dto.getLastName(),
-            dto.getMobile(),
-            dto.getAddress(),
-            dto.getPan(),
-            dto.getDob()
-    );
+    dto.getUserId(),
+    dto.getFirstName(),
+    dto.getLastName(),
+    dto.getMobile(),
+    dto.getPermanentAddress(), 
+    dto.getCurrentAddress(),   
+    dto.getPan(),
+    dto.getDob()
+);
 }
 
 
@@ -384,19 +418,41 @@ System.out.println("⚠️ Skipping ACTIVE status check temporarily");
         complaint.setPriority("MEDIUM");
 
         complaintRepo.save(complaint);
-    }
 
-    /* ================================
-       DASHBOARD
-       ================================ */
+        // ✅ Acknowledge to investor and alert the Complaints Manager team
+        notificationBO.createNotification(
+                dto.getInvestorId(),
+                "COMPLAINT_RAISED",
+                "Your complaint (" + dto.getCategory() + ") has been registered. "
+                        + "Our team will review it shortly.");
+        notificationBO.createNotificationForRole(
+                "COMPLAINTS_MANAGER",
+                "COMPLAINT_NEW",
+                "New complaint raised by " + dto.getInvestorId()
+                        + " — category: " + dto.getCategory() + ".");
+    }
 
     public InvestorDashboardDTO getDashboard(String investorId) {
 
-        return new InvestorDashboardDTO(
-                getTotalInvestmentValue(investorId),
-                getInvestorPortfolio(investorId).size(),
-                getTransactionHistory(investorId)
-        );
+        // ✅ A brand-new investor with no activity should see an empty dashboard,
+        //    not an error. Compute each piece defensively.
+        double totalValue;
+        try {
+            totalValue = getTotalInvestmentValue(investorId);
+        } catch (DataNotFoundException e) {
+            totalValue = 0.0;
+        }
+
+        List<Portfolio> portfolios = portfolioRepo.findByInvestorId(investorId);
+        int holdings = (portfolios != null) ? portfolios.size() : 0;
+
+        List<Transaction> txns =
+                transactionRepo.findByInvestorIdOrderByTxnDateDesc(investorId);
+        if (txns == null) {
+            txns = java.util.Collections.emptyList();
+        }
+
+        return new InvestorDashboardDTO(totalValue, holdings, txns);
     }
     /* ============================
        NAV SERIES (for scenario analysis chart)

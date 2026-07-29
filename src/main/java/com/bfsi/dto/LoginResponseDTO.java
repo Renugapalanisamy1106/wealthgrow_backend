@@ -6,6 +6,7 @@ public class LoginResponseDTO {
     private String userName;
     private String email;
     private String role;
+    private String token;
 
     public LoginResponseDTO() {}
 
@@ -15,6 +16,23 @@ public class LoginResponseDTO {
         this.userName = userName;
         this.email = email;
         this.role = role;
+    }
+
+    public LoginResponseDTO(String userId, String userName,
+                            String email, String role, String token) {
+        this.userId = userId;
+        this.userName = userName;
+        this.email = email;
+        this.role = role;
+        this.token = token;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 
     public String getUserId() {

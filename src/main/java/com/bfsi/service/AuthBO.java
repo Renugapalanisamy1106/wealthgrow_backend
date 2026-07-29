@@ -11,6 +11,7 @@ import com.bfsi.repository.UserRepository;
 
 import java.util.UUID;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,11 +19,14 @@ public class AuthBO {
 
     private final UserRepository userRepo;
     private final InvestorProfileRepository profileRepo;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthBO(UserRepository userRepo,
-                  InvestorProfileRepository profileRepo) {
+                  InvestorProfileRepository profileRepo,
+                  PasswordEncoder passwordEncoder) {
         this.userRepo = userRepo;
         this.profileRepo = profileRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /* =====================
@@ -36,7 +40,24 @@ public class AuthBO {
         throw new UnauthorizedAccessException("Invalid email or password");
     }
 
-    if (!user.getPasswordHash().equals(password)) {
+    String stored = user.getPasswordHash();
+    boolean ok;
+
+    // ✅ BCrypt hashes start with $2a/$2b/$2y. If stored value is a hash,
+    //    verify with the encoder. Otherwise fall back to legacy plaintext
+    //    comparison and transparently upgrade the password to a hash.
+    if (stored != null && stored.startsWith("$2")) {
+        ok = passwordEncoder.matches(password, stored);
+    } else {
+        ok = stored != null && stored.equals(password);
+        if (ok) {
+            // upgrade-on-login: replace plaintext with a BCrypt hash
+            user.setPasswordHash(passwordEncoder.encode(password));
+            userRepo.save(user);
+        }
+    }
+
+    if (!ok) {
         throw new UnauthorizedAccessException("Invalid email or password");
     }
 
@@ -63,27 +84,28 @@ public class AuthBO {
 
         String userId = "INV" + UUID.randomUUID().toString().substring(0, 6);
 
-        // ✅ Save User
+        // ✅ Save User (password stored as BCrypt hash)
         User user = new User(
                 userId,
                 dto.getFirstName() + " " + dto.getLastName(),
                 dto.getEmail(),
-                dto.getPassword(),
+                passwordEncoder.encode(dto.getPassword()),
                 "INVESTOR"
         );
         userRepo.save(user);
 
         // ✅ Save Profile
         var profile = new com.bfsi.entity.InvestorProfile(
-                userId,
-                dto.getFirstName(),
-                dto.getLastName(),
-                dto.getEmail(),
-                dto.getMobile(),
-                null,
-                null,
-                null
-        );
+        userId,
+        dto.getFirstName(),
+        dto.getLastName(),
+        dto.getEmail(),
+        dto.getMobile(),
+        null,   // dob
+        null,   // pan
+        null,   // currentAddress ✅
+        null    // permanentAddress ✅
+);
         profileRepo.save(profile);
 
         return new User(

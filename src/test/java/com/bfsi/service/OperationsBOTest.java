@@ -24,6 +24,7 @@ public class OperationsBOTest {
     @Mock private NotificationRepository notificationRepo;
     @Mock private PortfolioRepository portfolioRepo;
     @Mock private UnitAllocationRepository unitAllocationRepo;
+    @Mock private MutualFundRepository fundRepo;
 
     @InjectMocks
     private OperationsBO operationsBO;
@@ -194,26 +195,29 @@ public class OperationsBOTest {
         Transaction txn = new Transaction();
         txn.setAmount(1000);
         txn.setInvestorId("INV01");
+        txn.setFundId("MF001");
+        txn.setStatus("PENDING");   // ✅ only pending txns can be allocated
 
         when(transactionRepo.findByTxnId("TXN001"))
                 .thenReturn(txn);
+        when(portfolioRepo.findAllByInvestorIdAndFundId("INV01", "MF001"))
+                .thenReturn(java.util.Collections.emptyList());   // no existing holding → a new one is created
 
         operationsBO.allocateUnits("TXN001", 10);
 
+        verify(portfolioRepo).save(any());
         verify(transactionRepo).save(any());
         verify(unitAllocationRepo).save(any());
         verify(notificationRepo).save(any());
     }
 
-    @Test
-    public void testAllocateUnits_NotFound() { 
+    @Test(expected = com.bfsi.exception.DataNotFoundException.class)
+    public void testAllocateUnits_NotFound() {
 
         when(transactionRepo.findByTxnId("TXN001"))
                 .thenReturn(null);
 
         operationsBO.allocateUnits("TXN001", 10);
-
-        verify(transactionRepo, never()).save(any());
     }
 
     /* ============================
@@ -258,5 +262,116 @@ public class OperationsBOTest {
                 .thenReturn(Collections.emptyList());
 
         operationsBO.getOperationNotifications();
+    }
+
+    /* ============================
+       ✅ NEW: ALLOCATION — MERGE INTO EXISTING HOLDING
+       ============================ */
+    @Test
+    public void testAllocateUnits_MergesExistingHolding() {
+
+        Transaction txn = new Transaction();
+        txn.setAmount(1000);
+        txn.setInvestorId("INV01");
+        txn.setFundId("MF001");
+        txn.setStatus("PENDING");
+
+        when(transactionRepo.findByTxnId("TXN001")).thenReturn(txn);
+
+        Portfolio existing = new Portfolio("P1", "INV01", "MF001", 50, 5000.0,
+                java.time.LocalDate.now());
+        when(portfolioRepo.findAllByInvestorIdAndFundId("INV01", "MF001"))
+                .thenReturn(java.util.List.of(existing));
+
+        // NAV 10 → 100 units, value 1000 added on top of existing 50 units / 5000 value
+        operationsBO.allocateUnits("TXN001", 10);
+
+        assertEquals(150, existing.getUnitBalance());
+        assertEquals(6000.0, existing.getCurrentValue(), 0.001);
+        verify(portfolioRepo).save(existing);
+        verify(unitAllocationRepo).save(any());
+    }
+
+    /* ============================
+       ✅ NEW: ALLOCATION — REJECT NON-PENDING
+       ============================ */
+    @Test(expected = InvalidOperationException.class)
+    public void testAllocateUnits_RejectsNonPending() {
+
+        Transaction txn = new Transaction();
+        txn.setAmount(1000);
+        txn.setInvestorId("INV01");
+        txn.setFundId("MF001");
+        txn.setStatus("ALLOCATED");   // already allocated
+
+        when(transactionRepo.findByTxnId("TXN001")).thenReturn(txn);
+
+        operationsBO.allocateUnits("TXN001", 10);
+    }
+
+    /* ============================
+       ✅ NEW: ALLOCATION — REJECT BAD NAV
+       ============================ */
+    @Test(expected = InvalidOperationException.class)
+    public void testAllocateUnits_RejectsBadNav() {
+
+        Transaction txn = new Transaction();
+        txn.setAmount(1000);
+        txn.setInvestorId("INV01");
+        txn.setFundId("MF001");
+        txn.setStatus("PENDING");
+
+        when(transactionRepo.findByTxnId("TXN001")).thenReturn(txn);
+
+        operationsBO.allocateUnits("TXN001", 0);   // NAV must be > 0
+    }
+
+    /* ============================
+       ✅ NEW: AUTO-ALLOCATE FALLBACK
+       ============================ */
+    @Test
+    public void testAutoAllocate_AllocatesStalePending() {
+
+        Transaction txn = new Transaction();
+        txn.setTxnId("TXN001");
+        txn.setAmount(1000);
+        txn.setInvestorId("INV01");
+        txn.setFundId("MF001");
+        txn.setStatus("PENDING");
+        txn.setTxnDate(java.time.LocalDate.now().minusDays(5));  // stale
+
+        when(transactionRepo.findPendingInvestTransactions())
+                .thenReturn(List.of(txn));
+
+        MutualFundProduct fund = new MutualFundProduct();
+        fund.setFundId("MF001");
+        fund.setNavLevel(10);
+        when(fundRepo.findByFundId("MF001")).thenReturn(fund);
+
+        // allocateUnits will re-fetch the txn by id
+        when(transactionRepo.findByTxnId("TXN001")).thenReturn(txn);
+        when(portfolioRepo.findAllByInvestorIdAndFundId("INV01", "MF001")).thenReturn(java.util.Collections.emptyList());
+
+        int count = operationsBO.autoAllocateStalePending(1);
+
+        assertEquals(1, count);
+        verify(portfolioRepo).save(any());
+    }
+
+    @Test
+    public void testAutoAllocate_SkipsRecentPending() {
+
+        Transaction txn = new Transaction();
+        txn.setTxnId("TXN001");
+        txn.setStatus("PENDING");
+        txn.setTxnDate(java.time.LocalDate.now());  // today → newer than cutoff
+
+        when(transactionRepo.findPendingInvestTransactions())
+                .thenReturn(List.of(txn));
+
+        int count = operationsBO.autoAllocateStalePending(1);
+
+        assertEquals(0, count);
+        verify(portfolioRepo, never()).save(any());
     }
 }

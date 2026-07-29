@@ -176,6 +176,24 @@ public class OperationsController {
     }
 
     /* ============================
+       PENDING INVESTMENTS (awaiting allocation)
+       ============================ */
+    @GetMapping("/allocation/pending")
+    public List<com.bfsi.entity.Transaction> getPendingAllocations() {
+        return operationsBO.getPendingInvestTransactions();
+    }
+
+    /* ============================
+       MANUAL AUTO-ALLOCATE TRIGGER
+       Allocates all PENDING invest txns older than the threshold (default 0 = all).
+       ============================ */
+    @PostMapping("/allocation/auto")
+    public String autoAllocate(@RequestParam(defaultValue = "0") int thresholdDays) {
+        int n = operationsBO.autoAllocateStalePending(thresholdDays);
+        return "Auto-allocated " + n + " transaction(s).";
+    }
+
+    /* ============================
        ✅ PROFILE APIs
        ============================ */
 
@@ -193,9 +211,10 @@ public String updateProfile(@RequestBody InvestorProfile profile) {
             profile.getFirstName(),
             profile.getLastName(),
             profile.getMobile(),
-            profile.getAddress(),
-            profile.getPan(),     // ✅ works now
-            profile.getDob()      // ✅ works now
+            profile.getPermanentAddress(),
+            profile.getCurrentAddress(),
+            profile.getPan(),
+            profile.getDob()
     );
 
     return "Profile updated successfully";

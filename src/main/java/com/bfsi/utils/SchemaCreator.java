@@ -52,7 +52,8 @@ public class SchemaCreator {
                     mobile VARCHAR(20),
                     dob DATE,
                     pan VARCHAR(20),
-                    address TEXT,
+                    current_address TEXT,
+                    permanent_address VARCHAR(500),
                     FOREIGN KEY (user_id) REFERENCES app_user(user_id)
                 );
             """);

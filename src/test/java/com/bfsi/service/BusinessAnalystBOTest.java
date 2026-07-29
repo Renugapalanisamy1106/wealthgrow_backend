@@ -27,6 +27,8 @@ public class BusinessAnalystBOTest {
     @Mock private UserProfileRepository profileRepo;
     @Mock private ScenarioNavSeriesRepository navSeriesRepo;
 
+    @Mock private NotificationBO notificationBO;
+
     @InjectMocks
     private BusinessAnalystBO analystBO;
 

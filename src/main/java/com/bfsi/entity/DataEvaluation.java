@@ -23,30 +23,35 @@ public class DataEvaluation {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // ✅ GAP 3 FIX: who submitted this evaluation (BA's userId)
-    // Maps to the new 'submitted_by' column added via migration below
+    // ✅ submitted_by
     @Column(name = "submitted_by")
     private String submittedBy;
+
+    // ✅ NEW FIELD (YOU MISSED THIS)
+    @Column(name = "admin_remarks")
+    private String adminRemarks;
 
     public DataEvaluation() {}
 
     // Getters and setters
-    public String getEvaluationId()             { return evaluationId; }
-    public void setEvaluationId(String v)       { this.evaluationId = v; }
+    public String getEvaluationId() { return evaluationId; }
+    public void setEvaluationId(String v) { this.evaluationId = v; }
 
-    public String getScenarioId()               { return scenarioId; }
-    public void setScenarioId(String v)         { this.scenarioId = v; }
+    public String getScenarioId() { return scenarioId; }
+    public void setScenarioId(String v) { this.scenarioId = v; }
 
-    public String getEvaluatorRole()            { return evaluatorRole; }
-    public void setEvaluatorRole(String v)      { this.evaluatorRole = v; }
+    public String getEvaluatorRole() { return evaluatorRole; }
+    public void setEvaluatorRole(String v) { this.evaluatorRole = v; }
 
-    public String getStatus()                   { return status; }
-    public void setStatus(String v)             { this.status = v; }
+    public String getStatus() { return status; }
+    public void setStatus(String v) { this.status = v; }
 
-    public LocalDateTime getCreatedAt()         { return createdAt; }
-    public void setCreatedAt(LocalDateTime v)   { this.createdAt = v; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime v) { this.createdAt = v; }
 
-    // ✅ GAP 3
-    public String getSubmittedBy()              { return submittedBy; }
-    public void setSubmittedBy(String v)        { this.submittedBy = v; }
+    public String getSubmittedBy() { return submittedBy; }
+    public void setSubmittedBy(String v) { this.submittedBy = v; }
+
+    public String getAdminRemarks() { return adminRemarks; }
+    public void setAdminRemarks(String v) { this.adminRemarks = v; }
 }

@@ -88,4 +88,14 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, String> {
        ============================ */
 
     List<Portfolio> findByInvestorId(String investorId);
+
+    /* ============================
+       FETCH A SPECIFIC HOLDING (investor + fund)
+       Used by Operations allocation to merge into an existing holding.
+       ============================ */
+    /* ============================
+       FETCH HOLDINGS (investor + fund)
+       Returns a list to stay robust if duplicate rows exist.
+       ============================ */
+    List<Portfolio> findAllByInvestorIdAndFundId(String investorId, String fundId);
 }

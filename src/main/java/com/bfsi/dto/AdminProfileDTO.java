@@ -14,7 +14,8 @@ public class AdminProfileDTO {
     private String mobile;
     private LocalDate dob;
     private String pan;
-    private String address;
+    private String permanentAddress;
+    private String currentAddress;
 
     public AdminProfileDTO(String adminId,
                            String firstName,
@@ -23,7 +24,8 @@ public class AdminProfileDTO {
                            String mobile,
                            LocalDate dob,
                            String pan,
-                           String address) {
+                           String permanentAddress,
+                           String currentAddress) {
         this.adminId = adminId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -31,7 +33,8 @@ public class AdminProfileDTO {
         this.mobile = mobile;
         this.dob = dob;
         this.pan = pan;
-        this.address = address;
+        this.permanentAddress = permanentAddress;
+        this.currentAddress = currentAddress;
     }
 
     public String getAdminId() {
@@ -62,7 +65,11 @@ public class AdminProfileDTO {
         return pan;
     }
 
-    public String getAddress() {
-        return address;
+    public String getPermanentAddress() {
+        return permanentAddress;
+    }
+
+    public String getCurrentAddress() {
+        return currentAddress;
     }
 }
