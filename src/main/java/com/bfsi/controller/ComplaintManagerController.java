@@ -13,7 +13,10 @@ import com.bfsi.dto.UserProfileDTO;
 
 @RestController
 @RequestMapping("/complaints")
-@CrossOrigin(origins = "http://localhost:4200")  // ✅ ADDED — was missing
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})  // ✅ ADDED — was missing
 public class ComplaintManagerController {
 
     private final ComplaintManagerBO complaintBO;

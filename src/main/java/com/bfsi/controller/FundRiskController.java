@@ -8,7 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 public class FundRiskController {
 
     private final FundRiskBO fundRiskBO;

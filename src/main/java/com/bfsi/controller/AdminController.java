@@ -18,7 +18,10 @@ import com.bfsi.service.AdminBO;
 
 @RestController
 @RequestMapping("/admin")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 public class AdminController {
 
     private final AdminBO adminBO;

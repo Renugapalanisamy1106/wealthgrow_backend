@@ -17,7 +17,10 @@ import com.bfsi.repository.UserProfileRepository;
 
 @RestController
 @RequestMapping("/operations")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 public class OperationsController {
 
     private final OperationsBO operationsBO;

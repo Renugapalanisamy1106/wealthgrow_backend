@@ -17,7 +17,10 @@ import com.bfsi.entity.ScenarioNavSeries;
 import com.bfsi.entity.Transaction;
 import com.bfsi.service.InvestorBO;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 /**
  * REST Controller for Investor operations
  */

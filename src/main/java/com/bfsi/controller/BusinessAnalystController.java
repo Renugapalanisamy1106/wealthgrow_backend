@@ -20,7 +20,10 @@ import com.bfsi.service.BusinessAnalystBO;
  */
 @RestController
 @RequestMapping("/ba")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 
 public class BusinessAnalystController {
 

@@ -11,7 +11,10 @@ import com.bfsi.service.AuthBO;
 /**
  * REST Controller for Authentication & Registration
  */
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {
+    "http://localhost:4200",
+    "https://wealthgrow-frontend.vercel.app/"
+})
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
