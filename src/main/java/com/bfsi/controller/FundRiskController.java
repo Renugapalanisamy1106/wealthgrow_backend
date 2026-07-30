@@ -10,7 +10,7 @@ import java.util.List;
 @RestController
 @CrossOrigin(origins = {
     "http://localhost:4200",
-    "https://wealthgrow-frontend.vercel.app/"
+    "https://wealthgrow-frontend.vercel.app"
 })
 public class FundRiskController {
 

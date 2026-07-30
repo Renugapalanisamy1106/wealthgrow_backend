@@ -13,7 +13,7 @@ import com.bfsi.service.AuthBO;
  */
 @CrossOrigin(origins = {
     "http://localhost:4200",
-    "https://wealthgrow-frontend.vercel.app/"
+    "https://wealthgrow-frontend.vercel.app"
 })
 @RestController
 @RequestMapping("/auth")
